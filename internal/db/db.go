@@ -69,7 +69,10 @@ func (s *sqlDB) Query(query string) (*Result, error) {
 
 	var warning string
 	if isSelect && strings.HasPrefix(upperQuery, "SELECT") && !strings.Contains(upperQuery, " LIMIT ") {
-		query = query + " LIMIT 500"
+		// Remove trailing semicolon if present to append LIMIT safely
+		trimmedQuery := strings.TrimSpace(query)
+		trimmedQuery = strings.TrimSuffix(trimmedQuery, ";")
+		query = trimmedQuery + " LIMIT 500"
 		warning = "Note: Added LIMIT 500 to select statement."
 	}
 
