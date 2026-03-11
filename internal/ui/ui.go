@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/table"
@@ -33,19 +34,23 @@ const (
 	focusTable
 )
 
+type ClearStatusMsg struct{}
+
 type Model struct {
-	db        db.Database
-	input     textinput.Model
-	table     table.Model
-	focus     focus
-	err       error
-	width     int
-	height     int
-	result     *db.Result
-	colOffset  int
-	showDetail bool
-	showHelp   bool
-	viewport   viewport.Model
+	db           db.Database
+	input        textinput.Model
+	table        table.Model
+	focus        focus
+	err          error
+	width        int
+	height       int
+	result       *db.Result
+	colOffset    int
+	showDetail   bool
+	showHelp     bool
+	viewport     viewport.Model
+	baseColWidth int
+	statusMsg    string
 }
 
 func NewModel(database db.Database) Model {
@@ -72,10 +77,11 @@ func NewModel(database db.Database) Model {
 	t.SetStyles(s)
 
 	return Model{
-		db:    database,
-		input: ti,
-		table: t,
-		focus: focusInput,
+		db:           database,
+		input:        ti,
+		table:        t,
+		focus:        focusInput,
+		baseColWidth: 20,
 	}
 }
 
@@ -87,6 +93,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case ClearStatusMsg:
+		m.statusMsg = ""
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -115,7 +125,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.updateTable(m.result)
 			}
 
-		case "right", "l":
+		case "right":
 			if m.showDetail || m.showHelp {
 				return m, nil
 			}
@@ -137,7 +147,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "c":
 			if m.focus == focusTable && m.result != nil {
-				m.copyAsCSV()
+				return m, m.copyAsCSV()
 			}
 
 		case "v":
@@ -146,6 +156,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.showDetail {
 					m.updateViewport()
 				}
+			}
+
+		case "+", "=":
+			if m.focus == focusTable && m.baseColWidth < 100 {
+				m.baseColWidth += 5
+				m.updateTable(m.result)
+			}
+
+		case "-", "_":
+			if m.focus == focusTable && m.baseColWidth > 10 {
+				m.baseColWidth -= 5
+				m.updateTable(m.result)
 			}
 
 		case "ctrl+t":
@@ -275,8 +297,12 @@ func (m *Model) updateTable(res *db.Result) {
 		return
 	}
 
-	const minColWidth = 15
-	const maxColWidth = 30
+	// Use user-defined base column width
+	minColWidth := m.baseColWidth
+	if minColWidth < 5 {
+		minColWidth = 5
+	}
+	maxColWidth := minColWidth * 3
 
 	// Determine how many columns can fit
 	availableWidth := m.width - 10
@@ -290,6 +316,7 @@ func (m *Model) updateTable(res *db.Result) {
 	var visibleColIndices []int
 
 	for i := m.colOffset; i < len(res.Columns); i++ {
+		// Base width calculation
 		w := len(res.Columns[i]) + 4
 		if w < minColWidth {
 			w = minColWidth
@@ -335,9 +362,9 @@ func (m *Model) updateTable(res *db.Result) {
 	m.table.SetRows(rows)
 }
 
-func (m *Model) copyAsCSV() {
+func (m *Model) copyAsCSV() tea.Cmd {
 	if m.result == nil {
-		return
+		return nil
 	}
 
 	var b strings.Builder
@@ -346,19 +373,25 @@ func (m *Model) copyAsCSV() {
 	// Write header
 	if err := w.Write(m.result.Columns); err != nil {
 		m.err = err
-		return
+		return nil
 	}
 
 	// Write rows
 	if err := w.WriteAll(m.result.Rows); err != nil {
 		m.err = err
-		return
+		return nil
 	}
 
 	w.Flush()
 	if err := clipboard.WriteAll(b.String()); err != nil {
 		m.err = err
+		return nil
 	}
+
+	m.statusMsg = "Copied entire result set to clipboard!"
+	return tea.Tick(time.Second*3, func(t time.Time) tea.Msg {
+		return ClearStatusMsg{}
+	})
 }
 
 func (m Model) View() string {
@@ -408,14 +441,28 @@ func (m Model) View() string {
 			colRange := fmt.Sprintf("Cols: %d-%d of %d", m.colOffset+1, m.colOffset+len(m.table.Columns()), len(m.result.Columns))
 			s += helpStyle.Render(fmt.Sprintf(" %d rows returned • %s", len(m.result.Rows), colRange))
 			s += "\n"
+			if m.result.Warning != "" {
+				s += lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Render(" " + m.result.Warning)
+				s += "\n"
+			}
 		}
+	}
+
+	if m.statusMsg != "" {
+		s += "\n"
+		s += lipgloss.NewStyle().
+			Foreground(lipgloss.Color("229")).
+			Background(lipgloss.Color("57")).
+			Padding(0, 1).
+			Render(m.statusMsg)
+		s += "\n"
 	}
 
 	// Help Section
 	s += "\n"
 	s += helpStyle.Render(" Tab: Switch focus • Enter: Run Query • h: Help • c: Copy CSV")
 	s += "\n"
-	s += helpStyle.Render(" ←/→/l: Scroll Columns • j/k/↑/↓: Scroll Rows • v: Detail • q: Quit")
+	s += helpStyle.Render(" ←/→: Scroll Columns • +/-: Width • ↑/↓: Scroll Rows • v: Detail • q: Quit")
 
 	return lipgloss.NewStyle().Padding(1, 2).Render(s)
 }
@@ -429,9 +476,9 @@ func (m Model) helpView() string {
 	lines := []string{
 		header.Render("Navigation"),
 		key.Render("Tab") + desc.Render("Switch focus between Input and Table"),
-		key.Render("j/k or ↑/↓") + desc.Render("Scroll through result rows"),
-		key.Render("l or →") + desc.Render("Scroll columns right"),
-		key.Render("←") + desc.Render("Scroll columns left"),
+		key.Render("↑/↓") + desc.Render("Scroll through result rows"),
+		key.Render("←/→") + desc.Render("Scroll columns left/right"),
+		key.Render("+ / -") + desc.Render("Increase / Decrease column width"),
 		"",
 		header.Render("Querying"),
 		key.Render("Enter") + desc.Render("Execute SQL query in input"),

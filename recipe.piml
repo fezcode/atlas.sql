@@ -1,4 +1,4 @@
 (name) atlas.sql
-(version) 0.1.0
+(version) 0.2.0
 (description) Terminal-based SQL client for SQLite and PostgreSQL with syntax highlighting.
 (license) MIT

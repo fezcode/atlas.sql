@@ -17,6 +17,11 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 && (os.Args[1] == "-h" || os.Args[1] == "--help") {
+		showHelp()
+		return
+	}
+
 	if len(os.Args) < 2 {
 		showHelp()
 		os.Exit(1)
@@ -46,7 +51,11 @@ func showHelp() {
 	fmt.Println("  PostgreSQL: atlas.sql \"postgres://user:pass@localhost:5432/dbname?sslmode=disable\"")
 	fmt.Println("\nControls:")
 	fmt.Println("  Enter: Run Query")
-	fmt.Println("  Tab: Switch between Query Input and Result Table")
-	fmt.Println("  ↑/↓: Navigate Results")
+	fmt.Println("  Tab: Switch focus")
+	fmt.Println("  Arrows: Navigate Results / Columns")
+	fmt.Println("  +/-: Adjust Column Width")
+	fmt.Println("  v: Detail View")
+	fmt.Println("  c: Copy CSV")
+	fmt.Println("  h: Show Help")
 	fmt.Println("  q: Quit")
 }

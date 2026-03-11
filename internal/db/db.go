@@ -14,6 +14,7 @@ type Result struct {
 	Columns []string
 	Rows    [][]string
 	Error   error
+	Warning string
 }
 
 type Database interface {
@@ -65,6 +66,12 @@ func (s *sqlDB) Query(query string) (*Result, error) {
 				strings.HasPrefix(upperQuery, "SHOW") || 
 				strings.HasPrefix(upperQuery, "EXPLAIN") ||
 				strings.HasPrefix(upperQuery, "WITH")
+
+	var warning string
+	if isSelect && strings.HasPrefix(upperQuery, "SELECT") && !strings.Contains(upperQuery, " LIMIT ") {
+		query = query + " LIMIT 500"
+		warning = "Note: Added LIMIT 500 to select statement."
+	}
 
 	if !isSelect {
 		res, err := s.db.Exec(query)
@@ -123,6 +130,7 @@ func (s *sqlDB) Query(query string) (*Result, error) {
 	return &Result{
 		Columns: cols,
 		Rows:    resultRows,
+		Warning: warning,
 	}, nil
 }
 
