@@ -419,6 +419,7 @@ func (m Model) helpView() string {
 	header := lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
 	key := lipgloss.NewStyle().Foreground(lipgloss.Color("229")).Width(15)
 	desc := lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
+	tutorial := lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 
 	lines := []string{
 		header.Render("Navigation"),
@@ -435,6 +436,19 @@ func (m Model) helpView() string {
 		header.Render("Data Operations"),
 		key.Render("v") + desc.Render("Toggle Detail View for selected row"),
 		key.Render("c") + desc.Render("Copy entire result set as CSV to clipboard"),
+		"",
+		header.Render("SQL Quick Tutorial"),
+		tutorial.Render("  -- Select all columns from a table"),
+		tutorial.Render("  SELECT * FROM table_name;"),
+		tutorial.Render("  -- Filter results"),
+		tutorial.Render("  SELECT * FROM users WHERE age > 18;"),
+		tutorial.Render("  -- Join tables"),
+		tutorial.Render("  SELECT u.name, p.title FROM users u JOIN posts p ON u.id = p.user_id;"),
+		tutorial.Render("  -- SQLite Meta: List Tables / Schema"),
+		tutorial.Render("  SELECT name FROM sqlite_master WHERE type='table';"),
+		tutorial.Render("  PRAGMA table_info(table_name); -- Describe table"),
+		tutorial.Render("  -- Postgres Meta: List Tables"),
+		tutorial.Render("  SELECT table_name FROM information_schema.tables;"),
 		"",
 		header.Render("General"),
 		key.Render("h") + desc.Render("Toggle this help screen"),
