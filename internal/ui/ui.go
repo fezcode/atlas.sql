@@ -201,9 +201,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			if m.focus == focusInput {
-				query := m.input.Value()
+				query := strings.TrimSpace(m.input.Value())
 				if query != "" {
-					res, err := m.db.Query(query)
+					var res *db.Result
+					var err error
+
+					if query == "\\dt" || query == "\\d" || query == ".tables" || strings.EqualFold(query, "show tables;") || strings.EqualFold(query, "show tables") {
+						m.showDetail = false
+						res, err = m.db.ListTables()
+					} else if query == "\\l" || query == ".databases" || strings.EqualFold(query, "show databases;") || strings.EqualFold(query, "show databases") {
+						m.showDetail = false
+						res, err = m.db.ListSchemas()
+					} else {
+						res, err = m.db.Query(query)
+					}
+
 					if err != nil {
 						m.err = err
 					} else {

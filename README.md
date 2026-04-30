@@ -5,7 +5,7 @@
 **atlas.sql** is a lightweight, keyboard-centric terminal user interface (TUI) for interacting with SQL databases. Part of the **Atlas Suite**, it provides a streamlined experience for running queries, visualizing results, and managing data directly in your terminal.
 
 ![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)
-![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
 
 ## ✨ Features
